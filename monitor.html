@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SkyBridge Network Monitor</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#071321;color:#edf5ff;font-family:Arial,sans-serif}
+header{padding:20px;background:#10243b}
+header h1{color:#43c7ff;margin:0}
+header p{color:#a9c1d5}
+main{max-width:850px;margin:auto;padding:18px}
+.card{background:#10243b;border:1px solid #29435c;padding:18px;border-radius:13px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.metric{background:#183651;padding:17px;border-radius:10px}
+.metric small{color:#a9c1d5}
+.metric strong{display:block;color:#43c7ff;font-size:27px;margin-top:9px}
+button{background:#0788ca;color:white;border:0;border-radius:9px;padding:13px 18px;font-weight:bold;cursor:pointer}
+button:disabled{opacity:.5}
+#status{color:#ffc75e}
+.note{font-size:12px;color:#a9c1d5;line-height:1.6}
+a{color:#43c7ff}
+@media(max-width:400px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<h1>🌐 SKYBRIDGE NETWORKS</h1>
+<p>Internet Connection Monitor</p>
+</header>
+<main>
+<section class="card">
+<h2>Connection Status</h2>
+<h3 id="status">Waiting for test...</h3>
+<p id="detail">Press the button to check your connection.</p>
+<button id="testButton" onclick="runTest()">Start Network Test</button>
+</section>
+
+<section class="card">
+<h2>Network Performance</h2>
+<div class="grid">
+<div class="metric">
+<small>Download Speed</small>
+<strong id="download">-- Mbps</strong>
+</div>
+<div class="metric">
+<small>Upload Speed</small>
+<strong id="upload">-- Mbps</strong>
+</div>
+<div class="metric">
+<small>Response Time</small>
+<strong id="latency">-- ms</strong>
+</div>
+<div class="metric">
+<small>Browser Connection</small>
+<strong id="connection">--</strong>
+</div>
+</div>
+</section>
+
+<section class="card">
+<h2>Test Information</h2>
+<p id="info">No test performed yet.</p>
+<p class="note">This browser test estimates connection performance using a public test endpoint. Results are not guaranteed ISP speed measurements. It does not monitor other devices or control your provider's connection.</p>
+</section>
+
+<section class="card">
+<h2>Network History</h2>
+<div id="history">No results yet.</div>
+</section>
+<p><a href="dashboard.html">← Back to Control Center</a></p>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+async function runTest(){
+const button=$("testButton");
+button.disabled=true;
+$("status").textContent="TESTING...";
+$("detail").textContent="Checking connection...";
+$("download").textContent="-- Mbps";
+$("upload").textContent="Not tested";
+$("latency").textContent="-- ms";
+$("connection").textContent=navigator.onLine?"ONLINE":"OFFLINE";
+
+try{
+if(!navigator.onLine) throw new Error("Your device reports no internet connection.");
+
+const url="https://www.gstatic.com/generate_204";
+const start=performance.now();
+const response=await fetch(url+"?t="+Date.now(),{
+cache:"no-store",
+mode:"no-cors"
+});
+const latency=Math.round(performance.now()-start);
+
+$("status").textContent="CONNECTION AVAILABLE";
+$("status").style.color="#46e69a";
+$("detail").textContent="The test endpoint responded.";
+$("latency").textContent=latency+" ms";
+$("connection").textContent="ONLINE";
+$("info").textContent="Connectivity check completed: "+new Date().toLocaleString();
+
+const result={
+time:new Date().toLocaleString(),
+latency:latency
+};
+
+let history=JSON.parse(localStorage.getItem("skybridgeHistory")||"[]");
+history.unshift(result);
+history=history.slice(0,10);
+localStorage.setItem("skybridgeHistory",JSON.stringify(history));
+showHistory();
+
+}catch(error){
+$("status").textContent="TEST FAILED";
+$("status").style.color="#ff7777";
+$("detail").textContent=error.message;
+$("info").textContent="Unable to complete connectivity check.";
+$("connection").textContent=navigator.onLine?"UNKNOWN":"OFFLINE";
+}finally{
+button.disabled=false;
+}
+}
+
+function showHistory(){
+const history=JSON.parse(localStorage.getItem("skybridgeHistory")||"[]");
+$("history").innerHTML=history.length?
+history.map(item=>"<p>"+item.time+" — "+item.latency+" ms</p>").join(""):
+"No results yet.";
+}
+showHistory();
+</script>
+</body>
+</html>
