@@ -1,0 +1,103 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkyBridge Networks</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#071321;color:#eaf4ff;font-family:Arial,sans-serif}
+header{padding:22px;background:#10243b;border-bottom:1px solid #25415d}
+header h1{margin:0;color:#43c7ff}
+header p{color:#9bb4cb;margin-bottom:0}
+main{padding:18px;max-width:950px;margin:auto}
+.card{background:#10243b;padding:18px;border-radius:14px;margin-bottom:16px;border:1px solid #25415d}
+h2{font-size:18px;margin-top:0}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.stat{background:#183651;padding:16px;border-radius:12px}
+.stat strong{display:block;font-size:25px;color:#43c7ff;margin-top:8px}
+.network{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;text-align:center}
+.node{background:#183651;border:1px solid #39759b;padding:15px;border-radius:12px;min-width:105px}
+.node span{display:block;font-size:25px;margin-bottom:8px}
+.arrow{color:#43c7ff;font-size:23px}
+button{background:#0788ca;color:white;border:0;padding:12px 16px;border-radius:9px;font-weight:bold;cursor:pointer;margin:4px}
+button.secondary{background:#34516c}
+.status{color:#ffc75e}
+.status.online{color:#46e69a}
+small{color:#9bb4cb}
+footer{text-align:center;padding:25px;color:#8ca8c1}
+</style>
+</head>
+<body>
+<header>
+<h1>🌐 SKYBRIDGE NETWORKS</h1>
+<p>Connecting Every Corner of the World.</p>
+</header>
+
+<main>
+<section class="card">
+<h2>Network Overview</h2>
+<div class="stats">
+<div class="stat">Connected Devices<strong id="devices">0</strong></div>
+<div class="stat">Wireless Towers<strong id="towers">0</strong></div>
+<div class="stat">Network Sources<strong id="sources">0</strong></div>
+<div class="stat">Network Status<strong id="status">OFFLINE</strong></div>
+</div>
+</section>
+
+<section class="card">
+<h2>Network Architecture</h2>
+<div class="network">
+<div class="node"><span>🌍</span>Internet Source</div>
+<div class="arrow">→</div>
+<div class="node"><span>🖥️</span>Core Hub</div>
+<div class="arrow">→</div>
+<div class="node"><span>📡</span>Wireless Tower</div>
+<div class="arrow">→</div>
+<div class="node"><span>📱</span>Devices</div>
+</div>
+<p><small>Illustrative network path. This diagram does not represent a live internet connection.</small></p>
+</section>
+
+<section class="card">
+<h2>Network Simulator</h2>
+<p>Test a simulated wireless network.</p>
+<p class="status" id="message">Waiting for simulation...</p>
+<button onclick="startNetwork()">Start Simulation</button>
+<button class="secondary" onclick="resetNetwork()">Reset</button>
+</section>
+
+<section class="card">
+<h2>Network Information</h2>
+<p>Connection type: <strong>Wireless simulation</strong></p>
+<p>Internet source: <strong>Not connected</strong></p>
+<p>Physical towers: <strong>Not installed</strong></p>
+<p><small>This prototype simulates network components. It does not provide actual internet access or measure real network speeds.</small></p>
+</section>
+</main>
+
+<footer>© 2026 SkyBridge Networks | Network Prototype v1.0</footer>
+
+<script>
+function startNetwork(){
+document.getElementById("devices").textContent="25";
+document.getElementById("towers").textContent="3";
+document.getElementById("sources").textContent="1";
+document.getElementById("status").textContent="SIMULATED";
+document.getElementById("status").style.color="#46e69a";
+document.getElementById("message").textContent="Simulation successful! Network components are connected in the model.";
+document.getElementById("message").className="status online";
+}
+function resetNetwork(){
+document.getElementById("devices").textContent="0";
+document.getElementById("towers").textContent="0";
+document.getElementById("sources").textContent="0";
+document.getElementById("status").textContent="OFFLINE";
+document.getElementById("status").style.color="";
+document.getElementById("message").textContent="Waiting for simulation...";
+document.getElementById("message").className="status";
+}
+</script>
+</body>
+</html>
