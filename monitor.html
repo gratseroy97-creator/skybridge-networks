@@ -4,135 +4,401 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071321">
 <title>SkyBridge Network Monitor</title>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#071321;color:#edf5ff;font-family:Arial,sans-serif}
-header{padding:20px;background:#10243b}
-header h1{color:#43c7ff;margin:0}
+
+body{
+ margin:0;
+ background:#071321;
+ color:#edf5ff;
+ font-family:Arial,sans-serif;
+}
+
+header{
+ padding:20px;
+ background:#10243b;
+ border-bottom:1px solid #29435c;
+}
+
+header h1{
+ color:#43c7ff;
+ margin:0;
+ font-size:23px;
+}
+
 header p{color:#a9c1d5}
-main{max-width:850px;margin:auto;padding:18px}
-.card{background:#10243b;border:1px solid #29435c;padding:18px;border-radius:13px;margin-bottom:16px}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.metric{background:#183651;padding:17px;border-radius:10px}
+
+main{
+ max-width:850px;
+ margin:auto;
+ padding:18px;
+}
+
+.card{
+ background:#10243b;
+ border:1px solid #29435c;
+ padding:18px;
+ border-radius:13px;
+ margin-bottom:16px;
+}
+
+.grid{
+ display:grid;
+ grid-template-columns:repeat(2,1fr);
+ gap:12px;
+}
+
+.metric{
+ background:#183651;
+ padding:17px;
+ border-radius:10px;
+}
+
 .metric small{color:#a9c1d5}
-.metric strong{display:block;color:#43c7ff;font-size:27px;margin-top:9px}
-button{background:#0788ca;color:white;border:0;border-radius:9px;padding:13px 18px;font-weight:bold;cursor:pointer}
+
+.metric strong{
+ display:block;
+ color:#43c7ff;
+ font-size:25px;
+ margin-top:9px;
+ overflow-wrap:anywhere;
+}
+
+button{
+ background:#0788ca;
+ color:white;
+ border:0;
+ border-radius:9px;
+ padding:13px 18px;
+ font-weight:bold;
+ cursor:pointer;
+}
+
 button:disabled{opacity:.5}
+
 #status{color:#ffc75e}
-.note{font-size:12px;color:#a9c1d5;line-height:1.6}
+
+.note{
+ font-size:12px;
+ color:#a9c1d5;
+ line-height:1.6;
+}
+
 a{color:#43c7ff}
-@media(max-width:400px){.grid{grid-template-columns:1fr}}
+
+.history-item{
+ padding:10px 0;
+ border-bottom:1px solid #29435c;
+ font-size:13px;
+}
+
+@media(max-width:400px){
+ .grid{grid-template-columns:1fr}
+}
 </style>
 </head>
+
 <body>
+
 <header>
 <h1>🌐 SKYBRIDGE NETWORKS</h1>
 <p>Internet Connection Monitor</p>
 </header>
+
 <main>
+
 <section class="card">
 <h2>Connection Status</h2>
+
 <h3 id="status">Waiting for test...</h3>
-<p id="detail">Press the button to check your connection.</p>
-<button id="testButton" onclick="runTest()">Start Network Test</button>
+
+<p id="detail">
+Press the button to check your internet connection.
+</p>
+
+<button id="testButton" onclick="runTest()">
+Start Network Test
+</button>
 </section>
 
 <section class="card">
 <h2>Network Performance</h2>
+
 <div class="grid">
+
 <div class="metric">
 <small>Download Speed</small>
-<strong id="download">-- Mbps</strong>
+<strong id="download">Not tested</strong>
 </div>
+
 <div class="metric">
 <small>Upload Speed</small>
-<strong id="upload">-- Mbps</strong>
+<strong id="upload">Not tested</strong>
 </div>
+
 <div class="metric">
 <small>Response Time</small>
 <strong id="latency">-- ms</strong>
 </div>
+
 <div class="metric">
 <small>Browser Connection</small>
-<strong id="connection">--</strong>
+<strong id="connection">Unknown</strong>
 </div>
+
 </div>
 </section>
 
 <section class="card">
 <h2>Test Information</h2>
+
 <p id="info">No test performed yet.</p>
-<p class="note">This browser test estimates connection performance using a public test endpoint. Results are not guaranteed ISP speed measurements. It does not monitor other devices or control your provider's connection.</p>
+
+<p class="note">
+This test checks connectivity and estimates response time
+to a public test endpoint. It does not measure download or
+upload speed, identify your ISP, or monitor other devices.
+</p>
 </section>
 
 <section class="card">
 <h2>Network History</h2>
+
 <div id="history">No results yet.</div>
+
+<button onclick="clearHistory()">
+Clear History
+</button>
 </section>
-<p><a href="dashboard.html">← Back to Control Center</a></p>
+
+<p>
+<a href="dashboard.html">← Back to Control Center</a>
+</p>
+
 </main>
 
 <script>
+
 const $ = id => document.getElementById(id);
 
+const TEST_URL =
+"https://www.gstatic.com/generate_204";
+
 async function runTest(){
-const button=$("testButton");
-button.disabled=true;
-$("status").textContent="TESTING...";
-$("detail").textContent="Checking connection...";
-$("download").textContent="-- Mbps";
-$("upload").textContent="Not tested";
-$("latency").textContent="-- ms";
-$("connection").textContent=navigator.onLine?"ONLINE":"OFFLINE";
 
-try{
-if(!navigator.onLine) throw new Error("Your device reports no internet connection.");
+ const button = $("testButton");
 
-const url="https://www.gstatic.com/generate_204";
-const start=performance.now();
-const response=await fetch(url+"?t="+Date.now(),{
-cache:"no-store",
-mode:"no-cors"
-});
-const latency=Math.round(performance.now()-start);
+ button.disabled = true;
 
-$("status").textContent="CONNECTION AVAILABLE";
-$("status").style.color="#46e69a";
-$("detail").textContent="The test endpoint responded.";
-$("latency").textContent=latency+" ms";
-$("connection").textContent="ONLINE";
-$("info").textContent="Connectivity check completed: "+new Date().toLocaleString();
+ $("status").textContent = "TESTING...";
+ $("status").style.color = "#ffc75e";
 
-const result={
-time:new Date().toLocaleString(),
-latency:latency
-};
+ $("detail").textContent =
+ "Checking connection to test server...";
 
-let history=JSON.parse(localStorage.getItem("skybridgeHistory")||"[]");
-history.unshift(result);
-history=history.slice(0,10);
-localStorage.setItem("skybridgeHistory",JSON.stringify(history));
-showHistory();
+ $("download").textContent = "Not tested";
+ $("upload").textContent = "Not tested";
+ $("latency").textContent = "-- ms";
 
-}catch(error){
-$("status").textContent="TEST FAILED";
-$("status").style.color="#ff7777";
-$("detail").textContent=error.message;
-$("info").textContent="Unable to complete connectivity check.";
-$("connection").textContent=navigator.onLine?"UNKNOWN":"OFFLINE";
-}finally{
-button.disabled=false;
+ $("connection").textContent =
+ navigator.onLine ? "ONLINE" : "OFFLINE";
+
+ try{
+
+  if(!navigator.onLine){
+   throw new Error(
+    "Your device reports no internet connection."
+   );
+  }
+
+  const controller = new AbortController();
+
+  const timeout = setTimeout(
+   () => controller.abort(),10000
+  );
+
+  const start = performance.now();
+
+  let response;
+
+  try{
+
+   response = await fetch(
+    TEST_URL + "?t=" + Date.now(),
+    {
+     method:"GET",
+     cache:"no-store",
+     signal:controller.signal
+    }
+   );
+
+  }finally{
+   clearTimeout(timeout);
+  }
+
+  const latency = Math.round(
+   performance.now() - start
+  );
+
+  if(!response.ok){
+   throw new Error(
+    "Test server returned HTTP " + response.status
+   );
+  }
+
+  $("status").textContent =
+   "CONNECTION AVAILABLE";
+
+  $("status").style.color = "#46e69a";
+
+  $("detail").textContent =
+   "Successfully reached the test server.";
+
+  $("latency").textContent =
+   latency + " ms";
+
+  $("connection").textContent = "ONLINE";
+
+  $("info").textContent =
+   "Connectivity check completed: " +
+   new Date().toLocaleString();
+
+  saveHistory({
+   time:new Date().toLocaleString(),
+   latency:latency,
+   status:"Connected"
+  });
+
+ }catch(error){
+
+  $("status").textContent = "TEST FAILED";
+
+  $("status").style.color = "#ff7777";
+
+  $("detail").textContent =
+   error.name === "AbortError"
+   ? "Connection test timed out."
+   : "Unable to verify connection: " +
+     error.message;
+
+  $("connection").textContent =
+   navigator.onLine ? "UNVERIFIED" : "OFFLINE";
+
+  $("info").textContent =
+   "Test failed: " + new Date().toLocaleString();
+
+ }finally{
+
+  button.disabled = false;
+
+ }
+
 }
+
+function saveHistory(result){
+
+ try{
+
+  let history = JSON.parse(
+   localStorage.getItem("skybridgeHistory") || "[]"
+  );
+
+  if(!Array.isArray(history)){
+   history = [];
+  }
+
+  history.unshift(result);
+
+  history = history.slice(0,10);
+
+  localStorage.setItem(
+   "skybridgeHistory",
+   JSON.stringify(history)
+  );
+
+  showHistory();
+
+ }catch(error){
+
+  $("history").textContent =
+   "History storage is unavailable in this browser.";
+
+ }
+
 }
 
 function showHistory(){
-const history=JSON.parse(localStorage.getItem("skybridgeHistory")||"[]");
-$("history").innerHTML=history.length?
-history.map(item=>"<p>"+item.time+" — "+item.latency+" ms</p>").join(""):
-"No results yet.";
+
+ try{
+
+  const history = JSON.parse(
+   localStorage.getItem("skybridgeHistory") || "[]"
+  );
+
+  if(!Array.isArray(history) || history.length === 0){
+   $("history").textContent = "No results yet.";
+   return;
+  }
+
+  $("history").replaceChildren();
+
+  history.forEach(item=>{
+
+   const row = document.createElement("div");
+
+   row.className = "history-item";
+
+   row.textContent =
+    item.time + " — " +
+    item.latency + " ms — " +
+    item.status;
+
+   $("history").appendChild(row);
+
+  });
+
+ }catch(error){
+
+  $("history").textContent =
+   "Unable to load test history.";
+
+ }
+
 }
+
+function clearHistory(){
+
+ try{
+
+  localStorage.removeItem("skybridgeHistory");
+
+  showHistory();
+
+ }catch(error){
+
+  $("history").textContent =
+   "Unable to clear history.";
+
+ }
+
+}
+
+window.addEventListener("online",()=>{
+ $("connection").textContent = "ONLINE";
+});
+
+window.addEventListener("offline",()=>{
+ $("connection").textContent = "OFFLINE";
+ $("status").textContent = "DEVICE OFFLINE";
+ $("status").style.color = "#ff7777";
+});
+
 showHistory();
+
 </script>
+
 </body>
 </html>
