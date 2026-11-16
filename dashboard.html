@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SkyBridge Control Center</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#071321;color:#edf5ff;font-family:Arial,sans-serif}
+header{padding:20px;background:#10243b;border-bottom:1px solid #29435c}
+header h1{color:#43c7ff;margin:0;font-size:24px}
+header p{color:#9bb4cb;margin-bottom:0}
+main{max-width:1000px;margin:auto;padding:18px}
+.card{background:#10243b;border:1px solid #29435c;padding:17px;border-radius:13px;margin-bottom:16px}
+h2{font-size:18px;margin-top:0}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.metric{background:#183651;padding:15px;border-radius:10px}
+.metric span{display:block;color:#a9c1d5;font-size:13px}
+.metric strong{display:block;color:#43c7ff;font-size:25px;margin-top:8px}
+.source{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 0;border-bottom:1px solid #29435c}
+.source:last-child{border:0}
+.source small{display:block;color:#a9c1d5;margin-top:5px}
+.status{font-size:12px;color:#ffc75e}
+button,select{padding:12px;border:0;border-radius:8px;background:#087fbd;color:white;font-weight:bold}
+button{cursor:pointer}
+select{background:#183651;border:1px solid #42617c;width:100%;margin:8px 0;color:white}
+.secondary{background:#34516c}
+.note{font-size:12px;color:#a9c1d5;line-height:1.6}
+footer{text-align:center;color:#8da9c0;padding:25px}
+@media(max-width:400px){.grid{grid-template-columns:1fr}.source{align-items:flex-start}}
+</style>
+</head>
+<body>
+<header>
+<h1>🌐 SKYBRIDGE NETWORKS</h1>
+<p>Hybrid Network Control Center</p>
+</header>
+
+<main>
+<section class="card">
+<h2>Network Overview</h2>
+<div class="grid">
+<div class="metric"><span>Internet Sources</span><strong id="sources">0</strong></div>
+<div class="metric"><span>Wireless Towers</span><strong id="towers">0</strong></div>
+<div class="metric"><span>Connected Customers</span><strong id="customers">0</strong></div>
+<div class="metric"><span>Network Health</span><strong id="health">--</strong></div>
+</div>
+</section>
+
+<section class="card">
+<h2>Internet Source Management</h2>
+<div class="source">
+<div>🌐 Fiber Internet<small>Primary backhaul</small></div>
+<strong class="status">NOT CONNECTED</strong>
+</div>
+<div class="source">
+<div>🛰️ Satellite Internet<small>Alternative backhaul</small></div>
+<strong class="status">NOT CONNECTED</strong>
+</div>
+<div class="source">
+<div>📡 Wireless Backhaul<small>Network distribution</small></div>
+<strong class="status">NOT CONNECTED</strong>
+</div>
+<p class="note">These are planned sources. No physical internet connection has been detected.</p>
+</section>
+
+<section class="card">
+<h2>Network Configuration</h2>
+<label for="primary">Preferred internet source</label>
+<select id="primary">
+<option value="Fiber">Fiber</option>
+<option value="Satellite">Satellite</option>
+<option value="Wireless">Wireless</option>
+</select>
+<button onclick="saveSettings()">Save Configuration</button>
+<p class="note" id="saved">No configuration saved yet.</p>
+</section>
+
+<section class="card">
+<h2>Network Infrastructure</h2>
+<p>📡 Wireless access points: <strong>Not installed</strong></p>
+<p>🗼 Physical towers: <strong>Not installed</strong></p>
+<p>🖥️ Core router: <strong>Not connected</strong></p>
+<p>🔐 Security system: <strong>Software prototype</strong></p>
+</section>
+
+<section class="card">
+<h2>System Status</h2>
+<p id="system">Control center ready. Waiting for real network integration.</p>
+<button class="secondary" onclick="checkSystem()">Check Dashboard</button>
+<p class="note">Dashboard checks only the local software interface. It does not test internet connectivity.</p>
+</section>
+</main>
+
+<footer>
+© 2026 SkyBridge Networks<br>
+Hybrid Network Management Prototype v1.0
+</footer>
+
+<script>
+function saveSettings(){
+const source=document.getElementById("primary").value;
+document.getElementById("saved").textContent=
+"Saved preferred source: "+source+
+". This is a local prototype setting, not a live network connection.";
+}
+function checkSystem(){
+document.getElementById("system").textContent=
+"Dashboard operational. Live network equipment integration is not yet configured.";
+}
+</script>
+</body>
+</html>
