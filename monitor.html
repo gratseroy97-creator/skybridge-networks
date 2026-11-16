@@ -122,6 +122,10 @@ Press the button to check your internet connection.
 <button id="testButton" onclick="runTest()">
 Start Network Test
 </button>
+ <br><br>
+<button id="fiveTestButton" onclick="runFiveTests()">
+ Run 5-Test Check
+</button>
 </section>
 
 <section class="card">
@@ -151,6 +155,12 @@ Start Network Test
 
 </div>
 </section>
+<section class="card">
+ <h2>Five-Test Summary</h2>
+ <p id="fiveSummary">
+ No five-test check performed yet.
+ </p>
+</section> 
 
 <section class="card">
 <h2>Test Information</h2>
@@ -295,7 +305,79 @@ async function runTest(){
  }
 
 }
+ 
+async function runFiveTests(){
 
+ const button = $("fiveTestButton");
+ const results = [];
+
+ button.disabled = true;
+ button.textContent = "Running 5 Tests...";
+
+ $("fiveSummary").textContent =
+  "Starting five connection checks...";
+
+ try{
+
+  for(let i = 1; i <= 5; i++){
+
+   $("fiveSummary").textContent =
+    "Running test " + i + " of 5...";
+
+   await runTest();
+
+   if($("status").textContent === "CONNECTION AVAILABLE"){
+
+    const value = parseInt(
+     $("latency").textContent,
+     10
+    );
+
+    if(Number.isFinite(value)){
+     results.push(value);
+    }
+
+   }
+
+   if(i < 5){
+    await new Promise(resolve =>
+     setTimeout(resolve, 1000)
+    );
+   }
+
+  }
+
+  if(results.length === 0){
+
+   $("fiveSummary").textContent =
+    "All five tests failed. Please check your connection and try again.";
+
+  }else{
+
+   const average = Math.round(
+    results.reduce((a,b) => a + b, 0) /
+    results.length
+   );
+
+   const fastest = Math.min(...results);
+   const slowest = Math.max(...results);
+
+   $("fiveSummary").textContent =
+    "Successful tests: " + results.length +
+    " of 5 | Average: " + average + " ms" +
+    " | Fastest: " + fastest + " ms" +
+    " | Slowest: " + slowest + " ms";
+
+  }
+
+ }finally{
+
+  button.disabled = false;
+  button.textContent = "Run 5-Test Check";
+
+ }
+
+}
 function saveHistory(result){
 
  try{
