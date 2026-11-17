@@ -22,7 +22,8 @@ import android.widget.Toast
 import kotlin.concurrent.thread
 import java.net.HttpURLConnection
 import java.net.URL
-
+import android.widget.EditText
+import android.text.InputType
 class MainActivity : Activity() {
 
     private lateinit var wifiManager: WifiManager
@@ -33,7 +34,8 @@ class MainActivity : Activity() {
     private lateinit var speedButton: Button
     private lateinit var speedText: TextView
     private lateinit var historyText: TextView
-
+private lateinit var targetSpeedInput: EditText
+private lateinit var performanceText: TextView
     private val permissionCode = 101
 
     private val wifiReceiver = object : BroadcastReceiver() {
@@ -87,6 +89,26 @@ historyText = addText(
     14f,
     white
 )
+targetSpeedInput = EditText(this).apply {
+    hint = "Enter plan download speed (Mbps)"
+    inputType = InputType.TYPE_CLASS_NUMBER or
+        InputType.TYPE_NUMBER_FLAG_DECIMAL
+    setTextColor(white)
+    setHintTextColor(0xFFAAAAAA.toInt())
+    setSingleLine(true)
+    root.addView(this)
+}
+
+val saveTargetButton = Button(this).apply {
+    text = "SAVE PLAN SPEED TARGET"
+    root.addView(this)
+}
+
+performanceText = addText(
+    "NETWORK PERFORMANCE\nEnter your plan speed to begin.",
+    14f,
+    white
+)
         scanButton = Button(this).apply {
             text = "SCAN NEARBY WI-FI"
             root.addView(this)
@@ -95,7 +117,38 @@ historyText = addText(
         addText("NEARBY WI-FI NETWORKS", 17f, blue)
 
         setContentView(root)
+val preferences = getSharedPreferences(
+    "speed_history",
+    MODE_PRIVATE
+)
 
+targetSpeedInput.setText(
+    preferences.getString("target_download_mbps", "") ?: ""
+)
+
+saveTargetButton.setOnClickListener {
+    val target = targetSpeedInput.text.toString().toDoubleOrNull()
+
+    if (target == null || target <= 0) {
+        Toast.makeText(
+            this,
+            "Enter a valid plan speed.",
+            Toast.LENGTH_SHORT
+        ).show()
+    } else {
+        preferences.edit()
+            .putString("target_download_mbps", target.toString())
+            .apply()
+
+        updatePerformanceSummary()
+
+        Toast.makeText(
+            this,
+            "Plan speed target saved!",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+}
         wifiManager = applicationContext.getSystemService(
             Context.WIFI_SERVICE
         ) as WifiManager
@@ -286,25 +339,95 @@ historyText = addText(
                 speedButton.isEnabled = true
 saveSpeedTest(downloadMbps, uploadMbps, latencyMs)
 showSpeedHistory()
-                speedText.text =
-                    "Download: " +
-                    (downloadMbps?.let { "%.2f Mbps".format(it) } ?: "Failed") +
-                    "\nUpload: " +
-                    (uploadMbps?.let { "%.2f Mbps".format(it) } ?: "Failed") +
-                    "\nLatency: " +
-                    (latencyMs?.let { "$it ms" } ?: "Failed") +
-                    "\n\nData used: approximately 6 MB"
+                private fun showSpeedHistory() {
+    val prefs = getSharedPreferences("speed_history", MODE_PRIVATE)
+    val history = prefs.getString("records", "") ?: ""
 
-                if (errors.isNotEmpty()) {
-                    Toast.makeText(
-                        this,
-                        errors.joinToString("\n"),
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
-        }
+    historyText.text = if (history.isBlank()) {
+        "SPEED TEST HISTORY\nNo tests saved yet."
+    } else {
+        "SPEED TEST HISTORY\n\n$history"
     }
+
+    updatePerformanceSummary()
+}
+
+private fun updatePerformanceSummary() {
+    val prefs = getSharedPreferences("speed_history", MODE_PRIVATE)
+    val history = prefs.getString("records", "") ?: ""
+
+    val downloads = history.lines().mapNotNull { line ->
+        Regex("""Down: ([0-9]+(?:[.,][0-9]+)?) Mbps""")
+            .find(line)
+            ?.groupValues?.get(1)
+            ?.replace(',', '.')
+            ?.toDoubleOrNull()
+    }
+
+    val uploads = history.lines().mapNotNull { line ->
+        Regex("""Up: ([0-9]+(?:[.,][0-9]+)?) Mbps""")
+            .find(line)
+            ?.groupValues?.get(1)
+            ?.replace(',', '.')
+            ?.toDoubleOrNull()
+    }
+
+    val target = prefs.getString(
+        "target_download_mbps",
+        ""
+    )?.toDoubleOrNull()
+
+    val averageDownload = downloads.average()
+    val averageUpload = uploads.average()
+
+    val summary = StringBuilder()
+    summary.append("NETWORK PERFORMANCE\n\n")
+
+    summary.append(
+        "Average Download: ${
+            if (downloads.isNotEmpty())
+                "%.2f".format(averageDownload) + " Mbps"
+            else "No data"
+        }\n"
+    )
+
+    summary.append(
+        "Average Upload: ${
+            if (uploads.isNotEmpty())
+                "%.2f".format(averageUpload) + " Mbps"
+            else "No data"
+        }\n"
+    )
+
+    if (target != null && target > 0) {
+        val threshold = target * 0.8
+        val belowCount = downloads.count { it < threshold }
+
+        summary.append(
+            "\nPlan Target: ${"%.2f".format(target)} Mbps\n"
+        )
+        summary.append(
+            "80% Threshold: ${"%.2f".format(threshold)} Mbps\n"
+        )
+        summary.append(
+            "Tests below threshold: $belowCount of ${downloads.size}\n"
+        )
+
+        if (belowCount >= 3) {
+            summary.append(
+                "\nWARNING: Repeated slow download results detected."
+            )
+        } else {
+            summary.append(
+                "\nPerformance monitoring active."
+            )
+        }
+    } else {
+        summary.append("\nEnter your plan speed to activate the 80% warning.")
+    }
+
+    performanceText.text = summary.toString()
+}
 private fun saveSpeedTest(
     download: Double?,
     upload: Double?,
