@@ -1,5 +1,7 @@
 package com.skybridge.networks
-
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import android.Manifest
 import android.app.Activity
 import android.content.BroadcastReceiver
@@ -30,6 +32,7 @@ class MainActivity : Activity() {
     private lateinit var scanButton: Button
     private lateinit var speedButton: Button
     private lateinit var speedText: TextView
+    private lateinit var historyText: TextView
 
     private val permissionCode = 101
 
@@ -79,7 +82,11 @@ class MainActivity : Activity() {
             16f,
             white
         )
-
+historyText = addText(
+    "SPEED TEST HISTORY\nNo tests saved yet.",
+    14f,
+    white
+)
         scanButton = Button(this).apply {
             text = "SCAN NEARBY WI-FI"
             root.addView(this)
@@ -277,7 +284,8 @@ class MainActivity : Activity() {
 
             runOnUiThread {
                 speedButton.isEnabled = true
-
+saveSpeedTest(downloadMbps, uploadMbps, latencyMs)
+showSpeedHistory()
                 speedText.text =
                     "Download: " +
                     (downloadMbps?.let { "%.2f Mbps".format(it) } ?: "Failed") +
@@ -297,7 +305,41 @@ class MainActivity : Activity() {
             }
         }
     }
+private fun saveSpeedTest(
+    download: Double?,
+    upload: Double?,
+    latency: Long?
+) {
+    val prefs = getSharedPreferences("speed_history", MODE_PRIVATE)
 
+    val time = SimpleDateFormat(
+        "MMM dd, HH:mm",
+        Locale.getDefault()
+    ).format(Date())
+
+    val record = "$time | Down: ${download?.let { "%.2f".format(it) } ?: "Failed"} Mbps" +
+        " | Up: ${upload?.let { "%.2f".format(it) } ?: "Failed"} Mbps" +
+        " | Latency: ${latency?.let { "$it ms" } ?: "Failed"}"
+
+    val oldHistory = prefs.getString("records", "") ?: ""
+
+    val updated = (oldHistory.lines().filter { it.isNotBlank() } + record)
+        .takeLast(10)
+        .joinToString("\n")
+
+    prefs.edit().putString("records", updated).apply()
+}
+
+private fun showSpeedHistory() {
+    val prefs = getSharedPreferences("speed_history", MODE_PRIVATE)
+    val history = prefs.getString("records", "") ?: ""
+
+    historyText.text = if (history.isBlank()) {
+        "SPEED TEST HISTORY\nNo tests saved yet."
+    } else {
+        "SPEED TEST HISTORY\n\n$history"
+    }
+}
     private fun startWifiScan() {
         val locationManager =
             getSystemService(Context.LOCATION_SERVICE) as LocationManager
