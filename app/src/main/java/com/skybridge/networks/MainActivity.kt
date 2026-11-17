@@ -1,4 +1,3 @@
-I
 package com.skybridge.networks
 
 import android.Manifest
@@ -14,7 +13,6 @@ import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
-import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -69,7 +67,6 @@ class MainActivity : Activity() {
         addText("INTERNET CONNECTION MONITOR", 14f, white)
 
         statusText = addText("CHECKING CONNECTION...", 18f, blue)
-
         resultsText = addText("Checking active network...", 15f, white)
 
         speedButton = Button(this).apply {
@@ -88,7 +85,7 @@ class MainActivity : Activity() {
             root.addView(this)
         }
 
-        val networkTitle = addText("NEARBY WI-FI NETWORKS", 17f, blue)
+        addText("NEARBY WI-FI NETWORKS", 17f, blue)
 
         setContentView(root)
 
@@ -152,14 +149,12 @@ class MainActivity : Activity() {
                 statusText.text = "MOBILE DATA CONNECTED"
                 resultsText.text =
                     "Provider profile: Smart (selected)\n" +
-                    "Connection: Cellular\n" +
-                    "Internet: Verified"
+                    "Connection: Cellular\nInternet: Verified"
             }
 
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> {
                 statusText.text = "WI-FI CONNECTED"
-                resultsText.text =
-                    "Connection: Wi-Fi\nInternet: Verified"
+                resultsText.text = "Connection: Wi-Fi\nInternet: Verified"
             }
 
             else -> {
@@ -170,147 +165,138 @@ class MainActivity : Activity() {
     }
 
     private fun runSpeedTest() {
-    
-private fun runSpeedTest() {
-    speedButton.isEnabled = false
-    speedText.text = "Testing download, upload and latency..."
+        speedButton.isEnabled = false
+        speedText.text = "Testing download, upload and latency..."
 
-    thread {
-        var downloadMbps: Double? = null
-        var uploadMbps: Double? = null
-        var latencyMs: Long? = null
-        val errors = mutableListOf<String>()
+        thread {
+            var downloadMbps: Double? = null
+            var uploadMbps: Double? = null
+            var latencyMs: Long? = null
+            val errors = mutableListOf<String>()
 
-        // 1. Measure HTTP response time
-        try {
-            val connection = URL(
-                "https://www.gstatic.com/generate_204"
-            ).openConnection() as HttpURLConnection
+            // Latency / HTTP response time
+            try {
+                val connection = URL(
+                    "https://www.gstatic.com/generate_204"
+                ).openConnection() as HttpURLConnection
 
-            connection.connectTimeout = 10000
-            connection.readTimeout = 10000
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
 
-            val start = System.nanoTime()
-            val responseCode = connection.responseCode
+                val start = System.nanoTime()
+                val responseCode = connection.responseCode
+                latencyMs = (System.nanoTime() - start) / 1_000_000
 
-            latencyMs =
-                (System.nanoTime() - start) / 1_000_000
+                connection.disconnect()
 
-            connection.disconnect()
-
-            if (responseCode !in 200..299) {
-                errors.add("Latency server returned HTTP $responseCode")
-            }
-        } catch (e: Exception) {
-            errors.add("Latency test failed")
-        }
-
-        // 2. Measure download speed (approximately 5 MB)
-        try {
-            val connection = URL(
-                "https://speed.cloudflare.com/__down?bytes=5000000"
-            ).openConnection() as HttpURLConnection
-
-            connection.connectTimeout = 15000
-            connection.readTimeout = 20000
-
-            val start = System.nanoTime()
-            var totalBytes = 0L
-            val buffer = ByteArray(8192)
-
-            connection.inputStream.use { input ->
-                while (true) {
-                    val count = input.read(buffer)
-                    if (count == -1) break
-                    totalBytes += count
+                if (responseCode !in 200..299) {
+                    errors.add("Latency server returned HTTP $responseCode")
                 }
+            } catch (e: Exception) {
+                errors.add("Latency test failed")
             }
 
-            val elapsed =
-                (System.nanoTime() - start) / 1_000_000_000.0
+            // Download test: approximately 5 MB
+            try {
+                val connection = URL(
+                    "https://speed.cloudflare.com/__down?bytes=5000000"
+                ).openConnection() as HttpURLConnection
 
-            connection.disconnect()
+                connection.connectTimeout = 15000
+                connection.readTimeout = 20000
 
-            if (elapsed > 0 && totalBytes > 0) {
-                downloadMbps =
-                    totalBytes * 8.0 / elapsed / 1_000_000.0
-            } else {
-                errors.add("No download data received")
-            }
-        } catch (e: Exception) {
-            errors.add("Download test failed")
-        }
+                val start = System.nanoTime()
+                var totalBytes = 0L
+                val buffer = ByteArray(8192)
 
-        // 3. Measure upload speed (approximately 1 MB)
-        try {
-            val payload = ByteArray(1_000_000) {
-                (it % 251).toByte()
-            }
+                connection.inputStream.use { input ->
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count == -1) break
+                        totalBytes += count
+                    }
+                }
 
-            val connection = URL(
-                "https://speed.cloudflare.com/__up"
-            ).openConnection() as HttpURLConnection
+                val elapsed =
+                    (System.nanoTime() - start) / 1_000_000_000.0
 
-            connection.requestMethod = "POST"
-            connection.doOutput = true
-            connection.connectTimeout = 15000
-            connection.readTimeout = 20000
-            connection.setRequestProperty(
-                "Content-Type",
-                "application/octet-stream"
-            )
-            connection.setFixedLengthStreamingMode(payload.size)
+                connection.disconnect()
 
-            val start = System.nanoTime()
-
-            connection.outputStream.use { output ->
-                output.write(payload)
-                output.flush()
+                if (elapsed > 0 && totalBytes > 0) {
+                    downloadMbps =
+                        totalBytes * 8.0 / elapsed / 1_000_000.0
+                } else {
+                    errors.add("No download data received")
+                }
+            } catch (e: Exception) {
+                errors.add("Download test failed")
             }
 
-            val elapsed =
-                (System.nanoTime() - start) / 1_000_000_000.0
+            // Upload test: approximately 1 MB
+            try {
+                val payload = ByteArray(1_000_000) {
+                    (it % 251).toByte()
+                }
 
-            val responseCode = connection.responseCode
+                val connection = URL(
+                    "https://speed.cloudflare.com/__up"
+                ).openConnection() as HttpURLConnection
 
-            connection.disconnect()
+                connection.requestMethod = "POST"
+                connection.doOutput = true
+                connection.connectTimeout = 15000
+                connection.readTimeout = 20000
+                connection.setRequestProperty(
+                    "Content-Type",
+                    "application/octet-stream"
+                )
+                connection.setFixedLengthStreamingMode(payload.size)
 
-            if (responseCode in 200..299 && elapsed > 0) {
-                uploadMbps =
-                    payload.size * 8.0 / elapsed / 1_000_000.0
-            } else {
-                errors.add("Upload server returned HTTP $responseCode")
+                val start = System.nanoTime()
+
+                connection.outputStream.use { output ->
+                    output.write(payload)
+                    output.flush()
+                }
+
+                val elapsed =
+                    (System.nanoTime() - start) / 1_000_000_000.0
+
+                val responseCode = connection.responseCode
+                connection.disconnect()
+
+                if (responseCode in 200..299 && elapsed > 0) {
+                    uploadMbps =
+                        payload.size * 8.0 / elapsed / 1_000_000.0
+                } else {
+                    errors.add("Upload server returned HTTP $responseCode")
+                }
+            } catch (e: Exception) {
+                errors.add("Upload test failed")
             }
-        } catch (e: Exception) {
-            errors.add("Upload test failed")
-        }
 
-        // 4. Display results
-        runOnUiThread {
-            speedButton.isEnabled = true
+            runOnUiThread {
+                speedButton.isEnabled = true
 
-            speedText.text =
-                "Download: " +
-                (downloadMbps?.let { "%.2f Mbps".format(it) }
-                    ?: "Failed") +
-                "\nUpload: " +
-                (uploadMbps?.let { "%.2f Mbps".format(it) }
-                    ?: "Failed") +
-                "\nLatency: " +
-                (latencyMs?.let { "$it ms" } ?: "Failed") +
-                "\n\nData used: approximately 6 MB"
+                speedText.text =
+                    "Download: " +
+                    (downloadMbps?.let { "%.2f Mbps".format(it) } ?: "Failed") +
+                    "\nUpload: " +
+                    (uploadMbps?.let { "%.2f Mbps".format(it) } ?: "Failed") +
+                    "\nLatency: " +
+                    (latencyMs?.let { "$it ms" } ?: "Failed") +
+                    "\n\nData used: approximately 6 MB"
 
-            if (errors.isNotEmpty()) {
-                Toast.makeText(
-                    this,
-                    errors.joinToString("\n"),
-                    Toast.LENGTH_LONG
-                ).show()
+                if (errors.isNotEmpty()) {
+                    Toast.makeText(
+                        this,
+                        errors.joinToString("\n"),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
     }
-}
-
 
     private fun startWifiScan() {
         val locationManager =
@@ -411,3 +397,4 @@ private fun runSpeedTest() {
         unregisterReceiver(wifiReceiver)
     }
 }
+
