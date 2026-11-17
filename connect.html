@@ -1,0 +1,240 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkyBridge Connect</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#071321;color:#edf5ff;
+ font-family:Arial,sans-serif
+}
+header{
+ background:#10243b;padding:22px 16px;
+ border-bottom:1px solid #29415c
+}
+h1{margin:0;color:#53c8ff}
+.subtitle{color:#a9bfd4;font-size:13px}
+main{max-width:760px;margin:auto;padding:16px}
+.card{
+ background:#10243b;border:1px solid #29415c;
+ border-radius:13px;padding:16px;margin-bottom:15px
+}
+h2{font-size:17px;margin:0 0 13px}
+.status{font-weight:bold;color:#ffcb66}
+.good{color:#55df9b}
+.small{font-size:12px;color:#a9bfd4;line-height:1.6}
+button{
+ width:100%;padding:13px;border:0;border-radius:8px;
+ background:#159bd1;color:white;font-weight:bold;
+ margin-top:10px;font-size:15px
+}
+input,select{
+ width:100%;padding:12px;margin:7px 0;
+ background:#071321;color:white;
+ border:1px solid #38536d;border-radius:7px
+}
+.source{
+ padding:12px 0;border-bottom:1px solid #29415c
+}
+.source:last-child{border:0}
+.source strong{display:block;margin-bottom:5px}
+footer{text-align:center;color:#819bb3;font-size:12px;padding:20px}
+a{color:#53c8ff}
+</style>
+</head>
+<body>
+
+<header>
+ <h1>🌐 SKYBRIDGE CONNECT</h1>
+ <div class="subtitle">Satellite • Fiber • Wireless Network Manager</div>
+</header>
+
+<main>
+
+<section class="card">
+ <h2>Internet Connection</h2>
+ <div id="browserStatus" class="status">
+ Checking browser connection...
+ </div>
+ <p id="response">Response time: Not tested</p>
+ <button onclick="testConnection()">
+ Test SkyBridge Connection
+ </button>
+ <p class="small">
+ This tests access to the SkyBridge hosting server.
+ It does not measure ISP speed or satellite signal strength.
+ </p>
+</section>
+
+<section class="card">
+ <h2>Network Sources</h2>
+ <div id="sources"></div>
+ <p class="small">
+ Sources remain unconfigured until compatible equipment
+ and an authorized internet service are connected.
+ </p>
+</section>
+
+<section class="card">
+ <h2>Register an Internet Source</h2>
+
+ <label for="sourceType">Connection type</label>
+ <select id="sourceType">
+  <option value="Satellite">Satellite Internet</option>
+  <option value="Fiber">Fiber Internet</option>
+  <option value="Wi-Fi">Wireless / Wi-Fi</option>
+ </select>
+
+ <label for="sourceName">Provider or network name</label>
+ <input id="sourceName"
+ placeholder="Example: Starlink, Kacific, Fiber provider">
+
+ <button onclick="addSource()">Add Network Source</button>
+</section>
+
+<section class="card">
+ <h2>Network Management</h2>
+ <p>Automatic failover: <span class="status">NOT CONFIGURED</span></p>
+ <p>Satellite modem: <span class="status">NOT CONNECTED</span></p>
+ <p>Nearby Wi-Fi scanner: <span class="status">ANDROID APP REQUIRED</span></p>
+ <p>Wireless distribution: <span class="status">NOT CONFIGURED</span></p>
+ <p class="small">
+ This dashboard does not intercept satellite signals,
+ bypass network passwords or control routers yet.
+ </p>
+</section>
+
+</main>
+
+<footer>
+ SKYBRIDGE NETWORKS © 2026<br>
+ Connecting Every Corner of the World
+</footer>
+
+<script>
+const defaultSources = [
+ {type:"Satellite",name:"Satellite connection",status:"Not configured"},
+ {type:"Fiber",name:"Fiber connection",status:"Not configured"},
+ {type:"Wi-Fi",name:"Wireless connection",status:"Not configured"}
+];
+
+function getSources(){
+ try{
+  const saved=localStorage.getItem("skybridgeSources");
+  return saved ? JSON.parse(saved) : defaultSources;
+ }catch(e){
+  return defaultSources;
+ }
+}
+
+function saveSources(data){
+ localStorage.setItem("skybridgeSources",JSON.stringify(data));
+}
+
+function renderSources(){
+ const list=document.getElementById("sources");
+ list.innerHTML="";
+ getSources().forEach((item,index)=>{
+  const div=document.createElement("div");
+  div.className="source";
+
+  const name=document.createElement("strong");
+  name.textContent=item.type+" — "+item.name;
+
+  const status=document.createElement("span");
+  status.className="small";
+  status.textContent="Status: "+item.status;
+
+  const remove=document.createElement("button");
+  remove.textContent="Remove source";
+  remove.style.background="#65404b";
+  remove.onclick=()=>{
+   const data=getSources();
+   data.splice(index,1);
+   saveSources(data);
+   renderSources();
+  };
+
+  div.append(name,status,remove);
+  list.appendChild(div);
+ });
+}
+
+function addSource(){
+ const type=document.getElementById("sourceType").value;
+ const name=document.getElementById("sourceName").value.trim();
+
+ if(!name){
+  alert("Enter a provider or network name.");
+  return;
+ }
+
+ const data=getSources();
+ data.push({
+  type:type,
+  name:name,
+  status:"Not configured"
+ });
+
+ saveSources(data);
+ document.getElementById("sourceName").value="";
+ renderSources();
+}
+
+async function testConnection(){
+ const status=document.getElementById("browserStatus");
+ const response=document.getElementById("response");
+
+ if(!navigator.onLine){
+  status.textContent="BROWSER OFFLINE";
+  status.className="status";
+  response.textContent="No active browser network detected.";
+  return;
+ }
+
+ status.textContent="CHECKING...";
+ response.textContent="Testing SkyBridge server...";
+
+ const start=performance.now();
+
+ try{
+  const result=await fetch("./index.html?check="+Date.now(),{
+   cache:"no-store"
+  });
+
+  if(!result.ok){
+   throw new Error("Server response: "+result.status);
+  }
+
+  const time=Math.round(performance.now()-start);
+
+  status.textContent="ONLINE — SERVER REACHED";
+  status.className="status good";
+  response.textContent="Response time: "+time+" ms";
+
+ }catch(error){
+  status.textContent="TEST FAILED";
+  status.className="status";
+  response.textContent="Unable to reach SkyBridge server.";
+ }
+}
+
+window.addEventListener("online",()=>{
+ document.getElementById("browserStatus").textContent=
+ "ONLINE — BROWSER CONNECTED";
+});
+
+window.addEventListener("offline",()=>{
+ document.getElementById("browserStatus").textContent=
+ "BROWSER OFFLINE";
+});
+
+renderSources();
+testConnection();
+</script>
+
+</body>
+</html>
