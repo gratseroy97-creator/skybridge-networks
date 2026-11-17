@@ -14,9 +14,14 @@ import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import kotlin.concurrent.thread
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : Activity() {
 
@@ -25,6 +30,8 @@ class MainActivity : Activity() {
     private lateinit var statusText: TextView
     private lateinit var resultsText: TextView
     private lateinit var scanButton: Button
+    private lateinit var speedButton: Button
+    private lateinit var speedText: TextView
 
     private val permissionCode = 101
 
@@ -38,11 +45,52 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
-        statusText = findViewById(R.id.statusText)
-        resultsText = findViewById(R.id.resultsText)
-        scanButton = findViewById(R.id.scanButton)
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(35, 35, 35, 35)
+            setBackgroundColor(android.graphics.Color.rgb(7, 19, 33))
+        }
+
+        fun addText(value: String, size: Float, color: Int): TextView {
+            return TextView(this).apply {
+                text = value
+                textSize = size
+                setTextColor(color)
+                setPadding(0, 15, 0, 15)
+                root.addView(this)
+            }
+        }
+
+        val blue = android.graphics.Color.rgb(85, 214, 255)
+        val white = android.graphics.Color.WHITE
+
+        addText("🌐 SKYBRIDGE NETWORKS", 24f, blue)
+        addText("INTERNET CONNECTION MONITOR", 14f, white)
+
+        statusText = addText("CHECKING CONNECTION...", 18f, blue)
+
+        resultsText = addText("Checking active network...", 15f, white)
+
+        speedButton = Button(this).apply {
+            text = "START INTERNET SPEED TEST"
+            root.addView(this)
+        }
+
+        speedText = addText(
+            "Download: Not tested\nUpload: Not tested\nLatency: Not tested",
+            16f,
+            white
+        )
+
+        scanButton = Button(this).apply {
+            text = "SCAN NEARBY WI-FI"
+            root.addView(this)
+        }
+
+        val networkTitle = addText("NEARBY WI-FI NETWORKS", 17f, blue)
+
+        setContentView(root)
 
         wifiManager = applicationContext.getSystemService(
             Context.WIFI_SERVICE
@@ -57,13 +105,13 @@ class MainActivity : Activity() {
         )
 
         if (Build.VERSION.SDK_INT >= 33) {
-            registerReceiver(
-                wifiReceiver,
-                filter,
-                Context.RECEIVER_NOT_EXPORTED
-            )
+            registerReceiver(wifiReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
             registerReceiver(wifiReceiver, filter)
+        }
+
+        speedButton.setOnClickListener {
+            runSpeedTest()
         }
 
         scanButton.setOnClickListener {
@@ -91,45 +139,109 @@ class MainActivity : Activity() {
         val capabilities = connectivityManager.getNetworkCapabilities(network)
 
         if (network == null || capabilities == null ||
-            !capabilities.hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_INTERNET
-            ) || !capabilities.hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_VALIDATED
-            )) {
+            !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) ||
+            !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
 
             statusText.text = "INTERNET NOT VERIFIED"
-            resultsText.text =
-                "No validated internet connection detected."
+            resultsText.text = "No validated internet connection detected."
             return
         }
 
         when {
-            capabilities.hasTransport(
-                NetworkCapabilities.TRANSPORT_CELLULAR
-            ) -> {
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> {
                 statusText.text = "MOBILE DATA CONNECTED"
                 resultsText.text =
                     "Provider profile: Smart (selected)\n" +
                     "Connection: Cellular\n" +
-                    "Internet: Verified\n\n" +
-                    "SkyBridge is using your phone's active mobile connection."
+                    "Internet: Verified"
             }
 
-            capabilities.hasTransport(
-                NetworkCapabilities.TRANSPORT_WIFI
-            ) -> {
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> {
                 statusText.text = "WI-FI CONNECTED"
                 resultsText.text =
-                    "Connection: Wi-Fi\n" +
-                    "Internet: Verified\n\n" +
-                    "The active connection is Wi-Fi, not necessarily Smart."
+                    "Connection: Wi-Fi\nInternet: Verified"
             }
 
             else -> {
                 statusText.text = "NETWORK CONNECTED"
-                resultsText.text =
-                    "Internet connection verified.\n" +
-                    "Transport type not identified."
+                resultsText.text = "Internet connection verified."
+            }
+        }
+    }
+
+    private fun runSpeedTest() {
+        speedButton.isEnabled = false
+        speedText.text = "Testing download speed and latency..."
+
+        thread {
+            var downloadMbps = 0.0
+            var latencyMs = 0L
+            var error = ""
+
+            try {
+                val pingStart = System.nanoTime()
+
+                val pingConnection = URL(
+                    "https://www.gstatic.com/generate_204"
+                ).openConnection() as HttpURLConnection
+
+                pingConnection.connectTimeout = 10000
+                pingConnection.readTimeout = 10000
+                pingConnection.requestMethod = "GET"
+
+                pingConnection.connect()
+                pingConnection.inputStream.close()
+
+                latencyMs = (System.nanoTime() - pingStart) / 1_000_000
+                pingConnection.disconnect()
+
+                val downloadConnection = URL(
+                    "https://speed.cloudflare.com/__down?bytes=5000000"
+                ).openConnection() as HttpURLConnection
+
+                downloadConnection.connectTimeout = 15000
+                downloadConnection.readTimeout = 20000
+
+                val start = System.nanoTime()
+                var totalBytes = 0L
+                val buffer = ByteArray(8192)
+
+                downloadConnection.inputStream.use { input ->
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count == -1) break
+                        totalBytes += count
+                    }
+                }
+
+                val elapsedSeconds =
+                    (System.nanoTime() - start) / 1_000_000_000.0
+
+                downloadConnection.disconnect()
+
+                if (elapsedSeconds > 0 && totalBytes > 0) {
+                    downloadMbps =
+                        (totalBytes * 8.0) / elapsedSeconds / 1_000_000.0
+                } else {
+                    error = "No download data received."
+                }
+
+            } catch (e: Exception) {
+                error = e.message ?: "Speed test failed."
+            }
+
+            runOnUiThread {
+                speedButton.isEnabled = true
+
+                if (error.isNotEmpty()) {
+                    speedText.text = "Test failed: $error"
+                } else {
+                    speedText.text =
+                        "Download: %.2f Mbps\n".format(downloadMbps) +
+                        "Upload: Not tested\n" +
+                        "Latency: $latencyMs ms\n\n" +
+                        "Download test used approximately 5 MB."
+                }
             }
         }
     }
@@ -152,13 +264,12 @@ class MainActivity : Activity() {
         }
 
         try {
-            statusText.text = "SCANNING..."
-            resultsText.text = "Searching for nearby Wi-Fi networks..."
+            statusText.text = "SCANNING WI-FI..."
+            resultsText.text = "Searching for nearby networks..."
 
             if (!wifiManager.startScan()) {
                 statusText.text = "SCAN NOT STARTED"
-                resultsText.text =
-                    "Android may be limiting Wi-Fi scans. Try again later."
+                resultsText.text = "Android may be limiting Wi-Fi scans."
             }
         } catch (e: SecurityException) {
             statusText.text = "PERMISSION ERROR"
@@ -218,7 +329,7 @@ class MainActivity : Activity() {
             startWifiScan()
         } else {
             statusText.text = "PERMISSION DENIED"
-            resultsText.text = "Location permission is required for Wi-Fi scanning."
+            resultsText.text = "Location permission is required."
         }
     }
 
