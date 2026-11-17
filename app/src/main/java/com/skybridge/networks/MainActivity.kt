@@ -9,6 +9,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
@@ -19,6 +21,7 @@ import android.widget.Toast
 class MainActivity : Activity() {
 
     private lateinit var wifiManager: WifiManager
+    private lateinit var connectivityManager: ConnectivityManager
     private lateinit var statusText: TextView
     private lateinit var resultsText: TextView
     private lateinit var scanButton: Button
@@ -45,6 +48,10 @@ class MainActivity : Activity() {
             Context.WIFI_SERVICE
         ) as WifiManager
 
+        connectivityManager = getSystemService(
+            Context.CONNECTIVITY_SERVICE
+        ) as ConnectivityManager
+
         val filter = IntentFilter(
             WifiManager.SCAN_RESULTS_AVAILABLE_ACTION
         )
@@ -60,36 +67,87 @@ class MainActivity : Activity() {
         }
 
         scanButton.setOnClickListener {
-            startWifiScan()
+            if (hasLocationPermission()) {
+                startWifiScan()
+            } else {
+                requestPermissions(
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                    permissionCode
+                )
+            }
+        }
+
+        showConnectionStatus()
+    }
+
+    private fun hasLocationPermission(): Boolean {
+        return checkSelfPermission(
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun showConnectionStatus() {
+        val network = connectivityManager.activeNetwork
+        val capabilities = connectivityManager.getNetworkCapabilities(network)
+
+        if (network == null || capabilities == null ||
+            !capabilities.hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET
+            ) || !capabilities.hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_VALIDATED
+            )) {
+
+            statusText.text = "INTERNET NOT VERIFIED"
+            resultsText.text =
+                "No validated internet connection detected."
+            return
+        }
+
+        when {
+            capabilities.hasTransport(
+                NetworkCapabilities.TRANSPORT_CELLULAR
+            ) -> {
+                statusText.text = "MOBILE DATA CONNECTED"
+                resultsText.text =
+                    "Provider profile: Smart (selected)\n" +
+                    "Connection: Cellular\n" +
+                    "Internet: Verified\n\n" +
+                    "SkyBridge is using your phone's active mobile connection."
+            }
+
+            capabilities.hasTransport(
+                NetworkCapabilities.TRANSPORT_WIFI
+            ) -> {
+                statusText.text = "WI-FI CONNECTED"
+                resultsText.text =
+                    "Connection: Wi-Fi\n" +
+                    "Internet: Verified\n\n" +
+                    "The active connection is Wi-Fi, not necessarily Smart."
+            }
+
+            else -> {
+                statusText.text = "NETWORK CONNECTED"
+                resultsText.text =
+                    "Internet connection verified.\n" +
+                    "Transport type not identified."
+            }
         }
     }
 
     private fun startWifiScan() {
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED) {
-
-            requestPermissions(
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                permissionCode
-            )
-            return
-        }
-
         val locationManager =
             getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
         if (Build.VERSION.SDK_INT >= 28 &&
             !locationManager.isLocationEnabled) {
-
             statusText.text = "LOCATION SERVICES REQUIRED"
-            resultsText.text =
-                "Please enable your phone's Location service, then scan again."
+            resultsText.text = "Enable Location and try again."
             return
         }
 
         if (!wifiManager.isWifiEnabled) {
             statusText.text = "WI-FI IS TURNED OFF"
-            resultsText.text = "Turn on Wi-Fi and try again."
+            resultsText.text = "Turn on Wi-Fi to scan nearby networks."
             return
         }
 
@@ -97,37 +155,29 @@ class MainActivity : Activity() {
             statusText.text = "SCANNING..."
             resultsText.text = "Searching for nearby Wi-Fi networks..."
 
-            val started = wifiManager.startScan()
-
-            if (!started) {
+            if (!wifiManager.startScan()) {
                 statusText.text = "SCAN NOT STARTED"
                 resultsText.text =
-                    "Android may be limiting scans. Try again later."
+                    "Android may be limiting Wi-Fi scans. Try again later."
             }
-
         } catch (e: SecurityException) {
-            statusText.text = "PERMISSION REQUIRED"
-            resultsText.text = "Allow location permission and try again."
+            statusText.text = "PERMISSION ERROR"
+            resultsText.text = "Check location permission."
         }
     }
 
     private fun displayNetworks() {
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED) {
-            return
-        }
+        if (!hasLocationPermission()) return
 
         try {
             val networks = wifiManager.scanResults
+            val output = StringBuilder()
 
             if (networks.isEmpty()) {
                 statusText.text = "NO NETWORKS FOUND"
-                resultsText.text =
-                    "No Wi-Fi results. Check Wi-Fi and Location settings."
+                resultsText.text = "No Wi-Fi scan results available."
                 return
             }
-
-            val output = StringBuilder()
 
             networks.forEachIndexed { index, network ->
                 val level = WifiManager.calculateSignalLevel(
@@ -135,7 +185,9 @@ class MainActivity : Activity() {
                 )
 
                 output.append("NETWORK ${index + 1}\n")
-                output.append("Name: ${network.SSID.ifBlank { "Hidden network" }}\n")
+                output.append(
+                    "Name: ${network.SSID.ifBlank { "Hidden network" }}\n"
+                )
                 output.append("Signal: ${network.level} dBm\n")
                 output.append("Strength: $level%\n")
                 output.append("Frequency: ${network.frequency} MHz\n")
@@ -147,7 +199,7 @@ class MainActivity : Activity() {
 
         } catch (e: SecurityException) {
             statusText.text = "SCAN PERMISSION ERROR"
-            resultsText.text = "Please check app permissions."
+            resultsText.text = "Check app permissions."
         }
     }
 
@@ -163,12 +215,17 @@ class MainActivity : Activity() {
         if (requestCode == permissionCode &&
             grantResults.isNotEmpty() &&
             grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
             startWifiScan()
         } else {
             statusText.text = "PERMISSION DENIED"
-            resultsText.text =
-                "Location permission is needed to read nearby Wi-Fi scan results."
+            resultsText.text = "Location permission is required for Wi-Fi scanning."
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::connectivityManager.isInitialized) {
+            showConnectionStatus()
         }
     }
 
